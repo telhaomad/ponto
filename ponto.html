@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sistema de Ponto - Corporativo</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/[email protected]/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --primary:#0d6efd;
+      --muted:#6c757d;
+      --card-bg:#ffffff;
+      --surface:#f8fafc;
+    }
+    body{ background: var(--surface); }
+    .card-acc { border-radius:14px; box-shadow:0 8px 24px rgba(13,110,253,0.08); }
+    .brand {
+      display:flex; gap:12px; align-items:center;
+    }
+    .brand .logo {
+      width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg,var(--primary),#0b5ed7);
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;
+    }
+    .small-muted { color:var(--muted); font-size:0.9rem; }
+    footer { text-align:center; padding:18px 0; color:var(--muted); }
+  </style>
+</head>
+<body>
+
+<div class="container py-4">
+
+  <header class="d-flex justify-content-between align-items-center mb-4">
+    <div class="brand">
+      <div class="logo">BP</div>
+      <div>
+        <div style="font-weight:700">Banco de Ponto</div>
+        <div class="small-muted">Painel Corporativo</div>
+      </div>
+    </div>
+    <div class="small-muted">Conectado ao Google Sheets</div>
+  </header>
+
+  <!-- Layout: left = main / right = admin / actions -->
+  <div class="row g-3">
+
+    <!-- LEFT: Auth / Register point -->
+    <div class="col-lg-7">
+
+      <!-- Card: Login -->
+      <div id="cardLogin" class="card card-acc p-4 mb-3">
+        <h5>Login</h5>
+        <div class="small-muted mb-2">Faça login com seu usuário ou como <strong>admin</strong> para acessar o painel.</div>
+        <div class="row g-2">
+          <div class="col-md-5">
+            <input id="inpUser" class="form-control" placeholder="Usuário (username)" />
+          </div>
+          <div class="col-md-5">
+            <input id="inpPass" type="password" class="form-control" placeholder="Senha" />
+          </div>
+          <div class="col-md-2 d-grid">
+            <button id="btnLogin" class="btn btn-primary">Entrar</button>
+          </div>
+        </div>
+        <div id="loginAlert" class="mt-3"></div>
+      </div>
+
+      <!-- Card: Registrar Ponto -->
+      <div id="cardPonto" class="card card-acc p-4 mb-3 d-none">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5 id="txtWelcome">Olá —</h5>
+            <div id="currentDateTime" class="small-muted"></div>
+          </div>
+          <div>
+            <button id="btnLogout" class="btn btn-outline-danger btn-sm">Sair</button>
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="mb-3">
+          <label class="form-label">Tipo de Registro</label>
+          <select id="selectType" class="form-select">
+            <option value="Entrada">Entrada</option>
+            <option value="Saída">Saída</option>
+            <option value="Intervalo">Intervalo</option>
+            <option value="Retorno">Retorno</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Observações (opcional)</label>
+          <input id="inpObs" class="form-control" placeholder="Observações..." />
+        </div>
+
+        <div class="mb-3 small-muted" id="locationLabel">Localização: obtendo...</div>
+
+        <div class="d-grid">
+          <button id="btnRegisterPunch" class="btn btn-success">Registrar Ponto</button>
+        </div>
+
+        <div id="punchMsg" class="mt-3"></div>
+      </div>
+
+      <!-- Card: Histórico rápido do dia -->
+      <div id="cardHistory" class="card card-acc p-3 mb-3 d-none">
+        <h6>Registros de Hoje</h6>
+        <div id="historyBody" class="mt-2 small-muted">Nenhum registro.</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Admin panel (visible only to admin after login) -->
+    <div class="col-lg-5">
+
+      <div id="cardAdmin" class="card card-acc p-4 mb-3 d-none">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5>Painel Administrativo</h5>
+          <small class="small-muted">Apenas admin</small>
+        </div>
+
+        <hr />
+
+        <h6>Cadastrar Funcionário</h6>
+        <div class="mb-2">
+          <input id="empName" class="form-control mb-2" placeholder="Nome completo" />
+          <input id="empRole" class="form-control mb-2" placeholder="Cargo" />
+          <input id="empUser" class="form-control mb-2" placeholder="Username (login)" />
+          <input id="empPass" type="password" class="form-control mb-2" placeholder="Senha" />
+          <div class="d-grid">
+            <button id="btnAddEmployee" class="btn btn-primary">Salvar Funcionário</button>
+          </div>
+          <div id="addEmpMsg" class="mt-2"></div>
+        </div>
+
+        <hr />
+
+        <h6>Funcionários (carregados)</h6>
+        <div id="employeesList" class="small-muted" style="max-height:220px; overflow:auto;"></div>
+      </div>
+
+      <!-- Quick report / instructions -->
+      <div class="card card-acc p-3">
+        <h6>Instruções Rápidas</h6>
+        <ul class="small-muted">
+          <li>Admin padrão: <strong>admin / admin</strong> — altere em produção.</li>
+          <li>As abas da planilha devem existir: <code>Funcionarios</code> e <code>Banco de Ponto</code>.</li>
+          <li>Compartilhe a planilha como “Qualquer pessoa com o link pode editar”.</li>
+          <li>Restrinja a chave de API no Google Cloud (HTTP referer + Sheets API).</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="mt-4 small-muted">Feito para uso corporativo • Integrado ao Google Sheets</footer>
+</div>
+
+<!-- Bootstrap JS (bundle) -->
+<script src="https://cdn.jsdelivr.net/npm/[email protected]/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* ====================== CONFIGURAÇÃO ====================== */
+/* Substitua se necessário — você já forneceu esses valores */
+const SHEET_ID = "18Znj5svqnhScG_UWHtANe-NbvcpcQoodR4Z9N_JP5v8";
+const API_KEY  = "AIzaSyDsDRXZN1OLo4ZQPBZ5ivCN5mriOnBA4mg";
+const SHEET_EMP = "Funcionarios";      // aba de funcionários
+const SHEET_PTO = "Banco de Ponto";    // aba dos pontos
+
+/* ====================== ESTADO ====================== */
+let employees = [];        // carregados da sheet
+let currentUser = null;    // objeto { nome, cargo, usuario, senha } ou 'admin'
+let currentLocation = null;
+
+/* ====================== HELPERS SHEETS ====================== */
+async function fetchSheetValues(range) {
+  const enc = encodeURIComponent(range);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${enc}?key=${API_KEY}`;
+  console.log('GET', url);
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(`GET error ${resp.status}: ${txt}`);
+  }
+  const json = await resp.json();
+  return json.values || [];
+}
+
+async function appendSheetValues(range, values) {
+  const enc = encodeURIComponent(range);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${enc}:append?valueInputOption=USER_ENTERED&key=${API_KEY}`;
+  const body = { values };
+  console.log('POST', url, body);
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(`POST error ${resp.status}: ${txt}`);
+  }
+  return resp.json();
+}
+
+/* ====================== INICIALIZAÇÃO ====================== */
+document.getElementById('btnLogin').addEventListener('click', onLogin);
+document.getElementById('btnLogout').addEventListener('click', onLogout);
+document.getElementById('btnRegisterPunch').addEventListener('click', onRegisterPunch);
+document.getElementById('btnAddEmployee').addEventListener('click', onAddEmployee);
+
+init();
+
+function setTimeNowUI(){
+  const el = document.getElementById('currentDateTime');
+  const n = new Date();
+  el.textContent = n.toLocaleString('pt-BR');
+}
+setInterval(setTimeNowUI, 1000);
+
+async function init(){
+  // tenta carregar funcionários (não bloqueia login admin)
+  try {
+    await loadEmployees();
+    renderEmployeesList();
+  } catch (err) {
+    console.warn('Erro init loadEmployees', err);
+  }
+  // start geo
+  startGeolocation();
+}
+
+/* ====================== LOAD EMPLOYEES ====================== */
+async function loadEmployees() {
+  try {
+    const rows = await fetchSheetValues(`${SHEET_EMP}!A2:D`);
+    employees = (rows || []).map(r => ({
+      nome: r[0] || '',
+      cargo: r[1] || '',
+      usuario: r[2] || '',
+      senha: r[3] || ''
+    }));
+    // cache local
+    localStorage.setItem('employees_cache', JSON.stringify(employees));
+    return employees;
+  } catch (err) {
+    console.error('loadEmployees error', err);
+    // fallback cache
+    const cached = JSON.parse(localStorage.getItem('employees_cache') || '[]');
+    if (cached.length) {
+      employees = cached;
+      console.warn('Using cached employees');
+      return employees;
+    }
+    throw err;
+  }
+}
+
+/* ====================== UI RENDER EMPLOYEES ====================== */
+function renderEmployeesList() {
+  const el = document.getElementById('employeesList');
+  if (!employees.length) {
+    el.innerHTML = '<div class="small-muted">Sem funcionários carregados.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  employees.forEach(e => {
+    const row = document.createElement('div');
+    row.className = 'p-2 border-bottom';
+    row.innerHTML = `<strong>${escapeHtml(e.nome)}</strong><div class="small-muted">${escapeHtml(e.cargo)} — ${escapeHtml(e.usuario)}</div>`;
+    el.appendChild(row);
+  });
+}
+
+/* ====================== LOGIN / AUTH ====================== */
+async function onLogin(){
+  const user = document.getElementById('inpUser').value.trim();
+  const pass = document.getElementById('inpPass').value.trim();
+  const alertEl = document.getElementById('loginAlert');
+  alertEl.innerHTML = '';
+
+  if (!user || !pass) {
+    alertEl.innerHTML = `<div class="alert alert-warning p-2">Preencha usuário e senha.</div>`;
+    return;
+  }
+
+  // Admin local (hardcoded) — somente admin pode cadastrar
+  if (user === 'admin' && pass === 'admin') {
+    currentUser = { nome: 'Administrador', cargo:'Admin', usuario:'admin', isAdmin:true };
+    showAppForUser();
+    alertEl.innerHTML = `<div class="alert alert-success p-2">Logado como <strong>admin</strong>.</div>`;
+    return;
+  }
+
+  // otherwise use sheet employees
+  try {
+    if (!employees.length) await loadEmployees();
+    const found = employees.find(e => e.usuario === user && e.senha === pass);
+    if (!found) {
+      alertEl.innerHTML = `<div class="alert alert-danger p-2">Credenciais inválidas.</div>`;
+      return;
+    }
+    currentUser = {...found, isAdmin:false};
+    showAppForUser();
+    alertEl.innerHTML = `<div class="alert alert-success p-2">Olá, ${escapeHtml(found.nome)}.</div>`;
+    await loadTodayRecords(); // preload today's records
+  } catch (err) {
+    console.error('login error', err);
+    alertEl.innerHTML = `<div class="alert alert-danger p-2">Erro ao autenticar (veja console).</div>`;
+  }
+}
+
+function onLogout(){
+  currentUser = null;
+  document.getElementById('cardPonto').classList.add('d-none');
+  document.getElementById('cardHistory').classList.add('d-none');
+  document.getElementById('cardAdmin').classList.add('d-none');
+  document.getElementById('cardLogin').classList.remove('d-none');
+  document.getElementById('inpUser').value = '';
+  document.getElementById('inpPass').value = '';
+  document.getElementById('loginAlert').innerHTML = '';
+}
+
+/* ====================== SHOW APP FOR USER ====================== */
+function showAppForUser(){
+  document.getElementById('cardLogin').classList.add('d-none');
+  document.getElementById('cardPonto').classList.remove('d-none');
+  document.getElementById('cardHistory').classList.remove('d-none');
+  document.getElementById('txtWelcome').textContent = `Olá, ${currentUser.nome}`;
+  // admin sees admin card
+  if (currentUser.isAdmin) {
+    document.getElementById('cardAdmin').classList.remove('d-none');
+    // refresh employees list
+    loadEmployees().then(renderEmployeesList).catch(()=>{});
+  } else {
+    document.getElementById('cardAdmin').classList.add('d-none');
+  }
+  // hide login alert
+  document.getElementById('loginAlert').innerHTML = '';
+}
+
+/* ====================== ADD EMPLOYEE (admin only) ====================== */
+async function onAddEmployee(){
+  if (!currentUser || !currentUser.isAdmin) {
+    document.getElementById('addEmpMsg').innerHTML = `<div class="alert alert-danger p-1">Somente admin pode adicionar.</div>`;
+    return;
+  }
+  const name = document.getElementById('empName').value.trim();
+  const role = document.getElementById('empRole').value.trim();
+  const user = document.getElementById('empUser').value.trim();
+  const pass = document.getElementById('empPass').value.trim();
+  const msgEl = document.getElementById('addEmpMsg');
+  msgEl.innerHTML = '';
+
+  if (!name || !user || !pass) {
+    msgEl.innerHTML = `<div class="alert alert-warning p-1">Preencha nome, usuário e senha.</div>`;
+    return;
+  }
+
+  // ensure fresh employees
+  try { await loadEmployees(); } catch(e){ console.warn(e); }
+
+  // check uniqueness
+  if (employees.some(e => e.usuario === user)) {
+    msgEl.innerHTML = `<div class="alert alert-warning p-1">Username já existe.</div>`;
+    return;
+  }
+
+  try {
+    await appendSheetValues(`${SHEET_EMP}!A:D`, [[name, role, user, pass]]);
+    msgEl.innerHTML = `<div class="alert alert-success p-1">Funcionário salvo com sucesso.</div>`;
+    // update local list
+    employees.push({ nome:name, cargo:role, usuario:user, senha:pass });
+    renderEmployeesList();
+    // clear inputs
+    document.getElementById('empName').value = '';
+    document.getElementById('empRole').value = '';
+    document.getElementById('empUser').value = '';
+    document.getElementById('empPass').value = '';
+  } catch (err) {
+    console.error('onAddEmployee err', err);
+    msgEl.innerHTML = `<div class="alert alert-danger p-1">Erro ao salvar (veja console).</div>`;
+  }
+}
+
+/* ====================== REGISTER PUNCH ====================== */
+async function onRegisterPunch(){
+  if (!currentUser) return;
+  const type = document.getElementById('selectType').value;
+  const obs = document.getElementById('inpObs').value.trim();
+  const msgEl = document.getElementById('punchMsg');
+  msgEl.innerHTML = '';
+
+  const now = new Date();
+  const data = now.toLocaleDateString('pt-BR');
+  const hora = now.toLocaleTimeString('pt-BR');
+
+  const name = currentUser.nome;
+  const cargo = currentUser.cargo || '';
+
+  // lat/lng if available
+  const lat = currentLocation ? currentLocation.latitude.toFixed(6) : '';
+  const lng = currentLocation ? currentLocation.longitude.toFixed(6) : '';
+
+  // row: Nome | Cargo | Tipo | Data | Hora | Latitude | Longitude | Observações
+  const row = [name, cargo, type, data, hora, lat, lng, obs];
+
+  msgEl.innerHTML = `<div class="alert alert-info p-1">Enviando registro...</div>`;
+  try {
+    await appendSheetValues(`${SHEET_PTO}!A:H`, [row]);
+    msgEl.innerHTML = `<div class="alert alert-success p-1">✅ ${type} registrada às ${hora}</div>`;
+    // update today's records UI
+    await loadTodayRecords();
+  } catch (err) {
+    console.error('onRegisterPunch err', err);
+    msgEl.innerHTML = `<div class="alert alert-danger p-1">Erro ao registrar (veja console)</div>`;
+  }
+}
+
+/* ====================== TODAY RECORDS ====================== */
+async function loadTodayRecords(){
+  if (!currentUser || currentUser.isAdmin) return;
+  const container = document.getElementById('historyBody');
+  container.innerHTML = `<div class="small-muted">Carregando...</div>`;
+  try {
+    const rows = await fetchSheetValues(`${SHEET_PTO}!A2:H`);
+    const today = new Date().toLocaleDateString('pt-BR');
+    const userRows = rows.filter(r => (r[0] === currentUser.nome) && (r[3] === today));
+    if (!userRows.length) {
+      container.innerHTML = `<div class="small-muted">Nenhum registro encontrado para hoje.</div>`;
+      return;
+    }
+    let html = '<table class="table table-sm"><thead><tr><th>Hora</th><th>Tipo</th><th>Obs</th></tr></thead><tbody>';
+    userRows.sort((a,b)=> (a[4]||'').localeCompare(b[4]||'')).forEach(r=>{
+      const hora = r[4] || r[3] || '-';
+      const tipo = r[2] || '-';
+      const obs = r[7] ? escapeHtml(r[7]) : '-';
+      html += `<tr><td>${escapeHtml(r[4]||'-')}</td><td>${escapeHtml(tipo)}</td><td>${obs}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('loadTodayRecords error', err);
+    container.innerHTML = `<div class="small-muted">Não foi possível carregar registros (fallback local).</div>`;
+  }
+}
+
+/* ====================== GEOLOCATION ====================== */
+function startGeolocation(){
+  const label = document.getElementById('locationLabel');
+  if (!navigator.geolocation) {
+    label.textContent = 'Localização: não suportada';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    currentLocation = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+    label.textContent = `Localização: ${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`;
+  }, err=>{
+    console.warn('geo error', err);
+    label.textContent = 'Localização: negada/indisponível';
+  }, { timeout:7000 });
+}
+
+/* ====================== UTIL ====================== */
+function escapeHtml(s=''){
+  return String(s).replace(/[&<>"'`]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;' }[c]));
+}
+
+</script>
+</body>
+</html>

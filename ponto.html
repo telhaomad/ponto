@@ -177,7 +177,7 @@ let currentLocation = null;
 /* ====================== HELPERS SHEETS ====================== */
 async function fetchSheetValues(range) {
   const enc = encodeURIComponent(range);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${enc}?key=${API_KEY}`;
+  const url = `https://script.google.com/macros/s/AKfycbw68WS0eDLu8hACgKKZLAOEjkYNMmkq8xLQwQ2AA2Pm7Ge0eLd9NA-CDQI93Iv0PnwKTA/exec`;
   console.log('GET', url);
   const resp = await fetch(url);
   if (!resp.ok) {
@@ -471,3 +471,4 @@ function escapeHtml(s=''){
 </script>
 </body>
 </html>
+
